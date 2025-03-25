@@ -1,7 +1,15 @@
 #ifndef UNIT_TEST
 
 #include <Arduino.h>
-#include <stm32f1xx_hal_gpio.h>
+
+#ifdef STM32F1
+#include <stm32f1xx_hal_gpio.h> // Inclusion pour STM32F1
+#elif defined(STM32F3)
+#include <stm32f3xx_hal_gpio.h> // Inclusion pour STM32F3
+#else
+#error "Unsupported STM32 series. Please define STM32F1 or STM32F3 in build_flags."
+#endif
+
 #include "hid_tables.h"
 #include "adb_structures.h"
 #include "hid_keyboard.h"
@@ -13,6 +21,9 @@
 
 bool apple_extended_detected = false;
 bool keyboard_present = false, mouse_present = false;
+
+bool led_caps = false; // Déclaration globale pour Caps Lock
+bool led_num = true;   // Déclaration globale pour Num Lock (actif par défaut)
 
 #ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_CDC
 void print16b(uint16_t buff) {
@@ -74,12 +85,14 @@ void setup() {
     adb_device_update_register3(ADB_ADDR_MOUSE, reg3, mask.raw, &error);
     if (!error) mouse_present = true;
 
-    // Set-up successful, turn of the LED
+    // Set-up successful, turn off the LED
     digitalWrite(PC13, HIGH);
+
+    // Activer NumLock au démarrage
+    adb_keyboard_write_leds(0, led_caps, led_num); // Mise à jour des LEDs
 }
 
 void keyboard_handler() {
-    static bool led_caps = false;
     static hid_key_report key_report = {0};
     bool error = false;
 
@@ -90,11 +103,17 @@ void keyboard_handler() {
 
     bool report_changed = hid_keyboard_set_keys_from_adb_register(&key_report, key_press);
 
-    // Handle the `toggle' caps lock key.
-    // Every action reported by an ADB keyboard on the caps lock key
-    // should be interpreted as key down, followed by key released,
-    // unless the keypress was so fast, that it was pressed and depressed
-    // within the same `register'. Then ignore.
+    // Ignorer toutes les touches du pavé numérique si NumLock n'est pas actif
+    if (!led_num) {
+        for (int i = 0; i < KEY_REPORT_KEYS_COUNT; i++) {
+            if ((key_report.keys[i] >= KEY_KPSLASH && key_report.keys[i] <= KEY_KPDOT || key_report.keys[i] == KEY_KPEQUAL)) {
+                key_report.keys[i] = 0; // Supprimer la touche du rapport
+                report_changed = true;
+            }
+        }
+    }
+
+    // Gestion de la touche Caps Lock
     bool caps_lock_action = key_press.data.key0 == ADB_KEY_CAPS_LOCK ||
             key_press.data.key1 == ADB_KEY_CAPS_LOCK;
 
@@ -110,7 +129,7 @@ void keyboard_handler() {
         hid_keyboard_send_report(&key_report);
 
         led_caps = !led_caps;
-        adb_keyboard_write_leds(0, led_caps, 0);
+        adb_keyboard_write_leds(0, led_caps, led_num); // Mise à jour des LEDs
 
         // Wait a little bit
         delay(80);
@@ -119,6 +138,19 @@ void keyboard_handler() {
         hid_keyboard_remove_key_from_report(&key_report, KEY_CAPSLOCK);
 
         report_changed = true;
+    }
+
+    // Gestion de la touche Num Lock
+    bool num_lock_action = key_press.data.key0 == ADB_KEY_NUM_LOCK && !key_press.data.released0 ||
+                           key_press.data.key1 == ADB_KEY_NUM_LOCK && !key_press.data.released1;
+
+    if (num_lock_action) // Changer l'état à chaque appui
+    {
+        led_num = !led_num;
+        adb_keyboard_write_leds(0, led_caps, led_num); // Mise à jour des LEDs
+
+        // Pas besoin d'ajouter ou de retirer NumLock dans le rapport HID,
+        // car il s'agit uniquement d'une bascule de l'état des LEDs.
     }
     
     // Send the finished report

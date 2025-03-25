@@ -17,6 +17,7 @@
 #define ADB_KEY_LEFT_COMMAND    0x37
 #define ADB_KEY_RIGHT_COMMAND   0x37
 #define ADB_KEY_CAPS_LOCK       0x39
+#define ADB_KEY_NUM_LOCK        0x47
 
 // Convert axis from 7b 2's complement to int8_t
 #define ADB_MOUSE_CONV_AXIS(x)  (int8_t)(x << 1)
