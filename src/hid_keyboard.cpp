@@ -136,3 +136,23 @@ bool hid_keyboard_remove_key_from_report(hid_key_report* report, uint8_t hid_key
     }
     return report_changed;
 }
+
+/**
+ * @brief Met à jour les modificateurs dans le rapport HID.
+ * 
+ * @param report Pointeur vers le rapport HID.
+ * @param modifier Code du modificateur (ex. Shift, Ctrl).
+ * @param pressed Indique si le modificateur est pressé (true) ou relâché (false).
+ * @return true si le rapport a été modifié, false sinon.
+ */
+bool hid_keyboard_update_modifier_in_report(hid_key_report* report, uint8_t modifier, bool pressed) {
+    uint8_t old_modifiers = report->modifiers;
+
+    if (pressed) {
+        report->modifiers |= modifier; // Active le bit correspondant au modificateur.
+    } else {
+        report->modifiers &= ~modifier; // Désactive le bit correspondant au modificateur.
+    }
+
+    return old_modifiers != report->modifiers; // Retourne true si le rapport a été modifié.
+}

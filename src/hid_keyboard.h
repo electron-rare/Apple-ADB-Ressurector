@@ -4,17 +4,15 @@
  * @part of Apple-ADB-Ressurector
  * Inspiré et basé sur le travail initial de Szymon Łopaciuk https://github.com/szymonlopaciuk/stm32-adb2usb
  * 
- * 
  * @date 2025
- * @author Clément SAILLANT
- * Dépôt actuel : https://github.com/electron-rare/Apple-ADB-Ressurector
  * @license GNU GPL v3
  */
 
-#ifndef HID_KEYBOARD_h
-#define HID_KEYBOARD_h
+#ifndef HID_KEYBOARD_H
+#define HID_KEYBOARD_H
 
 #include <cstdint>
+#include <stdbool.h>
 #include "adb.h"
 
 #define KEY_REPORT_KEYS_COUNT 6 /**< Nombre maximum de touches dans un rapport HID. */
@@ -55,15 +53,6 @@ void hid_keyboard_send_report(hid_key_report* report);
 bool hid_keyboard_set_keys_from_adb_register(hid_key_report* report, adb_data<adb_kb_keypress> reg);
 
 /**
- * @brief Met à jour les modificateurs du rapport HID à partir d'un registre ADB.
- * 
- * @param report Pointeur vers le rapport HID.
- * @param reg Données du registre ADB.
- * @return true si le rapport a été modifié, false sinon.
- */
-bool hid_keyboard_set_modifiers_from_adb_register(hid_key_report* report, adb_data<adb_kb_keypress> reg);
-
-/**
  * @brief Met à jour une touche spécifique dans le rapport HID.
  * 
  * @param report Pointeur vers le rapport HID.
@@ -72,16 +61,6 @@ bool hid_keyboard_set_modifiers_from_adb_register(hid_key_report* report, adb_da
  * @return true si le rapport a été modifié, false sinon.
  */
 bool hid_keyboard_update_key_in_report(hid_key_report* report, uint8_t hid_keycode, bool released);
-
-/**
- * @brief Met à jour un modificateur spécifique dans le rapport HID.
- * 
- * @param report Pointeur vers le rapport HID.
- * @param adb_keycode Code ADB du modificateur.
- * @param released Indique si le modificateur est relâché.
- * @return true si le rapport a été modifié, false sinon.
- */
-bool hid_keyboard_update_modifier_in_report(hid_key_report* report, uint8_t adb_keycode, bool released);
 
 /**
  * @brief Ajoute une touche au rapport HID.
@@ -101,4 +80,14 @@ bool hid_keyboard_add_key_to_report(hid_key_report* report, uint8_t hid_keycode)
  */
 bool hid_keyboard_remove_key_from_report(hid_key_report* report, uint8_t hid_keycode);
 
-#endif
+/**
+ * @brief Met à jour les modificateurs dans le rapport HID.
+ * 
+ * @param report Pointeur vers le rapport HID.
+ * @param modifier Code du modificateur (ex. Shift, Ctrl).
+ * @param pressed Indique si le modificateur est pressé (true) ou relâché (false).
+ * @return true si le rapport a été modifié, false sinon.
+ */
+bool hid_keyboard_update_modifier_in_report(hid_key_report* report, uint8_t modifier, bool pressed);
+
+#endif // HID_KEYBOARD_H
