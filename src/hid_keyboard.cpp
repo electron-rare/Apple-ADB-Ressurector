@@ -1,7 +1,6 @@
 #include "hid_keyboard.h"
 #include "usbd_hid_composite_if.h"
 #include <Arduino.h>
-#include "keymap.h"
 
 void hid_keyboard_init()
 {
@@ -30,31 +29,31 @@ void hid_keyboard_send_report(hid_key_report* report)
 
 bool hid_keyboard_set_keys_from_adb_register(
         hid_key_report* report, adb_data<adb_kb_keypress> key_press) {
-    // Power button is a special case, residing in both octets:
-    if (key_press.raw == ADB_KEY_POWER_DOWN)
+    // Power button est un cas spécial, présent dans les deux octets:
+    if (key_press.raw == ADBKey::KeyCode::POWER_DOWN)
         return hid_keyboard_update_key_in_report(report, KEY_POWER, false);
-    else if (key_press.raw == ADB_KEY_POWER_UP)
+    else if (key_press.raw == ADBKey::KeyCode::POWER_UP)
         return hid_keyboard_update_key_in_report(report, KEY_POWER, true);
 
-    // Other keys:
+    // Autres touches:
     bool report_changed = false;
     // Higher octet key:
     uint8_t key0 = key_press.data.key0;
-    if (adb_keymap_is_modifier(key0))
+    if (ADBKeymap::isModifier(key0))
         report_changed = hid_keyboard_update_modifier_in_report(
                 report, key0, key_press.data.released0);
     else
         report_changed = hid_keyboard_update_key_in_report(
-                report, adb_keycode_to_hid[key0], key_press.data.released0);
+                report, ADBKeymap::toHID(key0), key_press.data.released0);
 
     // Lower octet key:
     uint8_t key1 = key_press.data.key1;
-    if (adb_keymap_is_modifier(key1))
+    if (ADBKeymap::isModifier(key1))
         report_changed = hid_keyboard_update_modifier_in_report(
                 report, key1, key_press.data.released1) || report_changed;
     else
         report_changed = hid_keyboard_update_key_in_report(
-                report, adb_keycode_to_hid[key1], key_press.data.released1) || report_changed;
+                report, ADBKeymap::toHID(key1), key_press.data.released1) || report_changed;
     
     return report_changed;
 }
@@ -78,27 +77,17 @@ bool hid_keyboard_update_key_in_report(hid_key_report* report, uint8_t hid_keyco
 }
 
 bool hid_keyboard_update_modifier_in_report(hid_key_report* report, uint8_t adb_keycode, bool released) {
-    auto put_key = [released, report](uint8_t mask) mutable {
-        // no change if the modifier is already set
-        if (released == !(report->modifiers & mask)) return false;
+    uint8_t mask = ADBKeymap::getModifierMask(adb_keycode);
+    if (mask == 0) return false;
 
-        // flip the modifier
-        if (!released) report->modifiers |= mask;
-        else report->modifiers &= ~mask;
+    // No change if the modifier is already set
+    if (released == !(report->modifiers & mask)) return false;
 
-        return true;
-    };
+    // Flip the modifier
+    if (!released) report->modifiers |= mask;
+    else report->modifiers &= ~mask;
 
-    if (adb_keycode == ADB_KEY_LEFT_SHIFT) return put_key(KEY_MOD_LSHIFT);
-    if (adb_keycode == ADB_KEY_RIGHT_SHIFT) return put_key(KEY_MOD_RSHIFT);
-    if (adb_keycode == ADB_KEY_LEFT_CONTROL) return put_key(KEY_MOD_LCTRL);
-    if (adb_keycode == ADB_KEY_RIGHT_CONTROL) return put_key(KEY_MOD_RCTRL);
-    if (adb_keycode == ADB_KEY_LEFT_OPTION) return put_key(KEY_MOD_LALT);
-    if (adb_keycode == ADB_KEY_RIGHT_OPTION) return put_key(KEY_MOD_RALT);
-    if (adb_keycode == ADB_KEY_LEFT_COMMAND) return put_key(KEY_MOD_LMETA);
-    if (adb_keycode == ADB_KEY_RIGHT_COMMAND) return put_key(KEY_MOD_RMETA);
-
-    return false; // unreachable
+    return true;
 }
 
 // Returns true if after execution the key is in the report

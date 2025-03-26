@@ -1,8 +1,8 @@
 #ifndef HID_KEYBOARD_h
 #define HID_KEYBOARD_h
 
-#include <cstdint>
-#include "adb_structures.h"
+#include <cstdint> // Ajout pour définir uint8_t
+#include "adb.h"   // Inclusion de la bibliothèque ADB
 
 #define KEY_REPORT_KEYS_COUNT 6
 

@@ -1,186 +1,133 @@
+/*
+ * This file is part of the stm32-adb2usb project.
+ * Inspiré et adapté du projet https://github.com/szymonlopaciuk/stm32-adb2usb
+ *
+ * Copyright (C) 2025 Clément SAILLANT - L'électron rare
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #ifndef UNIT_TEST
 
-#include <Arduino.h>
-
-#ifdef STM32F1
-#include <stm32f1xx_hal_gpio.h> // Inclusion pour STM32F1
-#elif defined(STM32F3)
-#include <stm32f3xx_hal_gpio.h> // Inclusion pour STM32F3
-#else
-#error "Unsupported STM32 series. Please define STM32F1 or STM32F3 in build_flags."
-#endif
-
-#include "hid_tables.h"
-#include "adb_structures.h"
+#include <ADB.h>
 #include "hid_keyboard.h"
 #include "hid_mouse.h"
-#include "adb_devices.h"
-#include "Mouse.h"
 
-#define POLL_DELAY      5
+#define POLL_DELAY 5
 
-bool apple_extended_detected = false;
-bool keyboard_present = false, mouse_present = false;
+// Structure pour regrouper les états des périphériques
+struct DeviceState {
+    bool apple_extended_detected = false;
+    bool keyboard_present = false;
+    bool mouse_present = false;
+    bool led_caps = false; // État de la LED Caps Lock
+    bool led_num = true;   // État de la LED Num Lock (actif par défaut)
+};
 
-bool led_caps = false; // Déclaration globale pour Caps Lock
-bool led_num = true;   // Déclaration globale pour Num Lock (actif par défaut)
+// Instances globales
+ADB adb(PB4); // Remplacez PB4 par la pin appropriée
+ADBDevices adbDevices(adb);
+DeviceState deviceState;
 
-#ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_CDC
-void print16b(uint16_t buff) {
-    uint16_t mask = (1 << 15);
-    for (uint8_t i = 0; i < 16; i++)
-    {
-      Serial.write(buff & mask ? '1' : '0');
-      mask >>= 1;
-    }
-    Serial.write('\n');
-    Serial.flush();
+// Fonction utilitaire pour initialiser un périphérique
+bool initializeDevice(uint8_t addr, uint8_t handler_id) {
+    bool error = false;
+    adb_data<adb_register3> reg3 = {0}, mask = {0};
+    reg3.data.device_handler_id = handler_id;
+    mask.data.device_handler_id = 0xFF;
+    return adbDevices.deviceUpdateRegister3(addr, reg3, mask.raw, &error) && !error;
 }
-
-void printkbresp(adb_kb_keypress buff) {
-    //Keyboard.print(" key1 ");
-    Serial.print(buff.released0 ? "u" : "d");
-    Serial.print(buff.key0, 16);
-    Serial.print(", ");
-    Serial.print(buff.released1 ? "u" : "d");
-    Serial.print(buff.key1, 16);
-    Serial.print("\n");
-    Serial.flush();
-}
-#endif
 
 void setup() {
-    // Turn the led on at the beginning of setup
+    // Configuration de la LED d'état
     pinMode(PC13, OUTPUT);
     digitalWrite(PC13, LOW);
 
-#ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_CDC
+    // Initialisation de la communication série
     Serial.begin(115200);
-#endif
 
-    // Set up HID
-    hid_keyboard_init();
+    // Initialisation du bus ADB
+    adb.init(PB4, true); // Active l'utilisation de ADBDevices
 
-    // Set up the ADB bus
-    adb_init();
+    delay(1000); // Attente pour permettre aux périphériques de se réinitialiser
 
-    delay(1000); // A wait for good measure, apparently AEKII can take a moment to reset
+    // Initialisation des périphériques
+    deviceState.keyboard_present = initializeDevice(ADBKey::Address::KEYBOARD, 0x03);
+    deviceState.mouse_present = initializeDevice(ADBKey::Address::MOUSE, 0x02);
 
-    // Initialise the ADB devices
-    // Switch the keyboard to Apple Extended if available
-    bool error = false;
-    adb_data<adb_register3> reg3 = {0}, mask = {0};
-    reg3.data.device_handler_id = 0x03;
-    mask.data.device_handler_id = 0xFF;
-    apple_extended_detected = adb_device_update_register3(ADB_ADDR_KEYBOARD, reg3, mask.raw, &error);
-    if (!error) keyboard_present = true,
-
-    // Switch the mouse to higher resolution, if available
-    // TODO: Apple Extended Mouse Protocol (Handler = 4)
-    error = false;
-    reg3.raw = 0;
-    mask.raw = 0;
-    reg3.data.device_handler_id = 0x02;
-    mask.data.device_handler_id = 0xFF;
-    adb_device_update_register3(ADB_ADDR_MOUSE, reg3, mask.raw, &error);
-    if (!error) mouse_present = true;
-
-    // Set-up successful, turn off the LED
+    // Désactivation de la LED d'état après initialisation
     digitalWrite(PC13, HIGH);
 
-    // Activer NumLock au démarrage
-    adb_keyboard_write_leds(0, led_caps, led_num); // Mise à jour des LEDs
+    // Activation de Num Lock au démarrage
+    adbDevices.keyboardWriteLEDs(false, deviceState.led_caps, deviceState.led_num);
 }
 
-void keyboard_handler() {
+void handleKeyboard() {
     static hid_key_report key_report = {0};
     bool error = false;
 
-    auto key_press = adb_keyboard_read_key_press(&error);
-
-    if (error) return;  // don't continue changing the hid report if there was
-                        // an error reading from ADB – most often it's a timeout
+    // Lecture des touches pressées
+    auto key_press = adbDevices.keyboardReadKeyPress(&error);
+    if (error) return;
 
     bool report_changed = hid_keyboard_set_keys_from_adb_register(&key_report, key_press);
 
-    // Ignorer toutes les touches du pavé numérique si NumLock n'est pas actif
-    if (!led_num) {
-        for (int i = 0; i < KEY_REPORT_KEYS_COUNT; i++) {
-            if ((key_report.keys[i] >= KEY_KPSLASH && key_report.keys[i] <= KEY_KPDOT || key_report.keys[i] == KEY_KPEQUAL)) {
-                key_report.keys[i] = 0; // Supprimer la touche du rapport
-                report_changed = true;
-            }
-        }
-    }
-
-    // Gestion de la touche Caps Lock
-    bool caps_lock_action = key_press.data.key0 == ADB_KEY_CAPS_LOCK ||
-            key_press.data.key1 == ADB_KEY_CAPS_LOCK;
-
-    bool caps_lock_twice_in_register = key_press.data.key0 == ADB_KEY_CAPS_LOCK &&
-            key_press.data.key1 == ADB_KEY_CAPS_LOCK &&
-            key_press.data.released0 != key_press.data.released1;
-
-    if (caps_lock_action && !caps_lock_twice_in_register)
-    {
-        hid_keyboard_add_key_to_report(&key_report, KEY_CAPSLOCK);
-
-        // Send the preliminary report, with caps lock down
-        hid_keyboard_send_report(&key_report);
-
-        led_caps = !led_caps;
-        adb_keyboard_write_leds(0, led_caps, led_num); // Mise à jour des LEDs
-
-        // Wait a little bit
-        delay(80);
-        
-        // Now just release the caps lock key, and continue as before
-        hid_keyboard_remove_key_from_report(&key_report, KEY_CAPSLOCK);
-
+    // Gestion de Caps Lock - utilisation des constantes du namespace ADBKey
+    if ((key_press.data.key0 == ADBKey::KeyCode::CAPS_LOCK && !key_press.data.released0) ||
+        (key_press.data.key1 == ADBKey::KeyCode::CAPS_LOCK && !key_press.data.released1)) {
+        deviceState.led_caps = !deviceState.led_caps;
+        adbDevices.keyboardWriteLEDs(false, deviceState.led_caps, deviceState.led_num);
         report_changed = true;
     }
 
-    // Gestion de la touche Num Lock
-    bool num_lock_action = key_press.data.key0 == ADB_KEY_NUM_LOCK && !key_press.data.released0 ||
-                           key_press.data.key1 == ADB_KEY_NUM_LOCK && !key_press.data.released1;
-
-    if (num_lock_action) // Changer l'état à chaque appui
-    {
-        led_num = !led_num;
-        adb_keyboard_write_leds(0, led_caps, led_num); // Mise à jour des LEDs
-
-        // Pas besoin d'ajouter ou de retirer NumLock dans le rapport HID,
-        // car il s'agit uniquement d'une bascule de l'état des LEDs.
+    // Gestion de Num Lock - utilisation des constantes du namespace ADBKey
+    if ((key_press.data.key0 == ADBKey::KeyCode::NUM_LOCK && !key_press.data.released0) ||
+        (key_press.data.key1 == ADBKey::KeyCode::NUM_LOCK && !key_press.data.released1)) {
+        deviceState.led_num = !deviceState.led_num;
+        adbDevices.keyboardWriteLEDs(false, deviceState.led_caps, deviceState.led_num);
+        report_changed = true;
     }
-    
-    // Send the finished report
-    //if (report_changed)
+
+    // Envoi du rapport HID si modifié
+    if (report_changed) {
         hid_keyboard_send_report(&key_report);
+    }
 }
 
-void mouse_handler() {
+void handleMouse() {
     bool error = false;
-    auto mouse_data = adb_mouse_read_data(&error);
 
+    // Lecture des données de la souris
+    auto mouse_data = adbDevices.mouseReadData(&error);
     if (error || mouse_data.raw == 0) return;
 
-    int8_t mouse_x = ADB_MOUSE_CONV_AXIS(mouse_data.data.x_offset);
-    int8_t mouse_y = ADB_MOUSE_CONV_AXIS(mouse_data.data.y_offset);
-    
+    // Conversion des axes avec adbMouseConvertAxis
+    int8_t mouse_x = adbMouseConvertAxis(mouse_data.data.x_offset);
+    int8_t mouse_y = adbMouseConvertAxis(mouse_data.data.y_offset);
+
+    // Envoi du rapport HID pour la souris
     hid_mouse_send_report(mouse_data.data.button ? 0 : 1, mouse_x, mouse_y);
 }
 
 void loop() {
-    if (keyboard_present) {
-        keyboard_handler();
-        // Wait a tiny bit before polling again,
-        // while ADB seems fairly tolerent of quick requests
-        // we don't want to overwhelm USB either
+    if (deviceState.keyboard_present) {
+        handleKeyboard();
         delay(POLL_DELAY);
     }
 
-    if (mouse_present) {
-        mouse_handler();
+    if (deviceState.mouse_present) {
+        handleMouse();
         delay(POLL_DELAY);
     }
 }
