@@ -1,14 +1,28 @@
-# 🍏 stm32-adb2usb
-
-![Setup du projet](./assets/project-setup.jpeg)  
-*Un aperçu de mon setup avec un clavier Apple d'époque et une souris ADB.*
+# 🍏 Apple ADB Ressurector
 
 ![PlatformIO](https://img.shields.io/badge/platform-PlatformIO-orange)
 ![Licence](https://img.shields.io/badge/licence-GNU%20GPL%20v3-blue)
 ![Status](https://img.shields.io/badge/status-Beta-yellow)
 
-**stm32-adb2usb** : Parce que vos claviers et souris d'époque méritent une seconde vie ! 🕰️✨  
-Transformez vos périphériques Apple Desktop Bus (ADB) en périphériques USB modernes grâce à ce projet. Compatible avec les claviers et souris ADB des années 80 et 90, ce projet utilise une carte STM32F103 "Blue Pill" et repose sur PlatformIO. Et oui, ça fonctionne même avec les souris à un seul bouton ! 🖱️
+**Apple ADB Ressurector** : Donnez une seconde vie à vos trésors vintage ! 🕰️✨
+
+Transformez vos claviers et souris Apple Desktop Bus (ADB) des années 80 et 90 en périphériques USB modernes avec ce projet passionnant ! 🎉
+Compatible même avec les légendaires souris à un seul bouton, ce projet utilise PlatformIO pour donner une nouvelle vie à vos reliques de la pomme arc en ciel. 🖱️✨
+
+---
+
+## 🔗 Basé sur le travail de
+
+Ce projet est basé sur le travail initial de [Szymon Łopaciuk](https://github.com/szymonlopaciuk/stm32-adb2usb). Vous pouvez consulter son dépôt ici : [stm32-adb2usb](https://github.com/szymonlopaciuk/stm32-adb2usb). Merci à lui pour son incroyable contribution à la communauté open source ! 🙌
+
+---
+
+## 🌐 Mon dépôt
+
+Le code source de ce projet est disponible sur mon dépôt GitHub : [Apple ADB Ressurector](https://github.com/electron-rare/Apple-ADB-Ressurector). N'hésitez pas à y jeter un œil, à contribuer ou à poser des questions ! 😊
+
+<img src="./assets/project-setup.jpeg" alt="Setup du projet" width="400">  
+*Un aperçu de mon setup avec un clavier Apple d'époque et une souris ADB.*
 
 ---
 
@@ -16,8 +30,8 @@ Transformez vos périphériques Apple Desktop Bus (ADB) en périphériques USB m
 
 1. Clonez ce magnifique dépôt :
    ```bash
-   git clone https://github.com/yourusername/stm32-adb2usb.git
-   cd stm32-adb2usb
+   git clone https://github.com/electron-rare/Apple-ADB-Ressurector.git
+   cd apple-adb-ressurector
    ```
 
 2. Installez PlatformIO (si ce n'est pas déjà fait) :
