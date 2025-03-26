@@ -21,7 +21,7 @@ Ce projet est basé sur le travail initial de [Szymon Łopaciuk](https://github.
 
 Le code source de ce projet est disponible sur mon dépôt GitHub : [Apple ADB Ressurector](https://github.com/electron-rare/Apple-ADB-Ressurector). N'hésitez pas à y jeter un œil, à contribuer ou à poser des questions ! 😊
 
-<img src="./assets/project-setup.jpeg" alt="Setup du projet" width="400">  
+<img src="./assets/project-setup.jpeg" alt="Setup du projet" width="800">  
 *Un aperçu de mon setup avec un clavier Apple d'époque et une souris ADB.*
 
 ---
