@@ -48,9 +48,27 @@ Le code source de ce projet est disponible sur mon dépôt GitHub : [Apple ADB R
 
 ## 🎮 Utilisation
 
-1. Branchez votre périphérique ADB à la carte STM32.  
-2. Connectez la carte STM32 à votre ordinateur via USB.  
-3. Admirez la magie : votre périphérique ADB fonctionne maintenant comme un périphérique USB ! ✨
+1. Téléversez le firmware sur votre carte STM32 ou ESP32.
+2. Branchez votre périphérique ADB à la carte STM32 ou ESP32 (selon votre configuration).  
+3. Ajoutez une résistance de pull-up entre la broche de données (ADB_PIN) et l'alimentation (+V). Voici un schéma de connexion :  
+```
+                             +5V
+                             |
+                             R (4.7kΩ ou 10kΩ)
+                             |
+Périphérique ADB data <------+------------------+---> ADB_PIN (ESP32: GPIO2, STM32: PB4)
+                             |
+                             |
+                            GND
+```
+4. Connectez la carte STM32 ou ESP32 à votre ordinateur via USB ou Bluetooth.
+
+4. **Utilisation de connecteurs et câbles S-Video** :  
+   Le connecteur ADB est identique au connecteur S-Video. Vous pouvez donc utiliser des câbles S-Video standard pour connecter vos périphériques ADB.  
+
+5. Admirez la magie : votre périphérique ADB fonctionne maintenant comme un périphérique USB ou Bluetooth ! ✨  
+
+> **Note** : Grâce à l'environnement PlatformIO et à la configuration du firmware, tout le travail complexe est automatisé. Vous n'avez qu'à choisir la plateforme (STM32 ou ESP32) et à téléverser le firmware.  
 
 ---
 
@@ -110,18 +128,36 @@ Mais voilà, je ne trouvais pas exactement ce que je voulais, et comme j'avais d
 
 ---
 
+## ⚙️ Configuration des pins et paramètres
+
+Le projet utilise des définitions spécifiques pour configurer les pins en fonction de la plateforme utilisée (ESP32 ou STM32) :
+
+- `#define POLL_DELAY 5` : Définit un délai de 5 ms entre chaque cycle de polling pour interroger les périphériques ADB.  
+- `#define ADB_PIN` : Configure la pin utilisée pour la communication ADB :
+  - **ESP32** : Pin `2`.  
+  - **STM32** : Pin `PB4`.  
+- `#define LED_PIN` : Configure la pin utilisée pour la LED d'état :
+  - **ESP32** : Pin `4` (Devkit Wemos).  
+  - **STM32** : Pin `PC13`.  
+
+Ces définitions permettent une compatibilité multi-plateforme en adaptant automatiquement les pins selon la carte utilisée.
+
+---
+
 ## 🛑 État du projet
 
 Ce projet est actuellement en **beta**.  
-Prochain objectif : transformer vos claviers d'époque en claviers Bluetooth grâce à un ESP32. Oui, on rêve grand. 🌈
+- **ESP32** : Le support du clavier Bluetooth est désormais fonctionnel. Prochain objectif : ajouter le support Bluetooth pour la souris.  
+- **STM32** : Le support du clavier et de la souris comme périphériques USB est entièrement fonctionnel.  
 
 ---
 
 ## 🔮 Plans futurs
 
-- Concevoir un PCB pour une alimentation par batterie et une connectivité Bluetooth.  
-- Étendre le support à d'autres plateformes comme ESP32.  
-- Améliorer la gestion de l'alimentation pour les périphériques ADB exotiques.  
+- Concevoir un PCB pour une alimentation par batterie et un boîtier adapté.
+- Ajouter le support Bluetooth pour la souris.
+- Intégrer un écran OLED pour afficher des informations sur l'état de la connexion.
+- Ajouter un mode de veille pour économiser la batterie.
 
 ---
 
@@ -137,15 +173,24 @@ Prochain objectif : transformer vos claviers d'époque en claviers Bluetooth gr�
 
 - [x] Faire fonctionner le clavier.  
 - [x] Faire fonctionner la souris.  
-- [ ] Ajouter le support Bluetooth.  
-- [ ] Gérer plusieurs périphériques ADB simultanément.  
+- [x] Gérer plusieurs périphériques ADB simultanément.
+- [x] Ajouter le support Bluetooth pour le clavier.  
+- [ ] Ajouter le support Bluetooth pour la souris.  
+- [ ] Ajouter le support d'autres périphériques ADB (tablettes graphiques, trackballs, etc.).
+- [ ] Ajouter le support d'un écran OLED pour afficher des informations sur l'état de la connexion.
+- [ ] Ajouter un mode de veille pour économiser la batterie.
+- [ ] Concevoir un PCB pour une alimentation par batterie et un boîtier adapté.
+- [ ] Améliorer le support de la LED Num Lock.
+- [ ] Améliorer le support de la LED Caps Lock.
+- [ ] Améliorer le support de la LED Scroll Lock.
+
 
 ---
 
 ## 💡 Remerciements
 
 Un grand merci à **GitHub Copilot** pour son aide précieuse et ses suggestions parfois hilarantes. 🤖✨  
-Et bien sûr, merci à **Szymon Łopaciuk** pour l'inspiration initiale.  
+Et bien sûr, surtout merci à **Szymon Łopaciuk** pour l'inspiration initiale.  
 
 ---
 
