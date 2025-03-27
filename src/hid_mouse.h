@@ -3,7 +3,7 @@
  * @brief Gestion des fonctionnalités HID pour les souris.
  * @part of Apple-ADB-Ressurector
  * Inspiré et basé sur le travail initial de Szymon Łopaciuk https://github.com/szymonlopaciuk/stm32-adb2usb
- * 
+ * AaaaAaAa
  * 
  * @date 2025
  * @author Clément SAILLANT
