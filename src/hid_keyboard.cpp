@@ -20,7 +20,9 @@
  */
 void hid_keyboard_init() {
 #ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_HID
+    Serial.println("Initialisation du clavier HID...");
     HID_Composite_Init(HID_KEYBOARD);
+    Serial.println("Clavier HID initialisé.");
 #endif
 }
 
@@ -29,7 +31,9 @@ void hid_keyboard_init() {
  */
 void hid_keyboard_close() {
 #ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_HID
+    Serial.println("Fermeture du clavier HID...");
     HID_Composite_DeInit(HID_KEYBOARD);
+    Serial.println("Clavier HID fermé.");
 #endif
 }
 
@@ -42,6 +46,16 @@ void hid_keyboard_send_report(hid_key_report* report) {
     uint8_t buf[8] = {report->modifiers, 0, report->keys[0],
                       report->keys[1], report->keys[2], report->keys[3],
                       report->keys[4], report->keys[5]};
+
+    Serial.print("Envoi du rapport HID clavier - Modificateurs: ");
+    Serial.print(report->modifiers, HEX);
+    Serial.print(", Touches: ");
+    for (int i = 0; i < KEY_REPORT_KEYS_COUNT; i++) {
+        Serial.print(report->keys[i], HEX);
+        if (i < KEY_REPORT_KEYS_COUNT - 1) Serial.print(", ");
+    }
+    Serial.println();
+
 #ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_HID
     HID_Composite_keyboard_sendReport(buf, 8);
 #endif
@@ -55,6 +69,9 @@ void hid_keyboard_send_report(hid_key_report* report) {
  * @return true si le rapport a été modifié, false sinon.
  */
 bool hid_keyboard_set_keys_from_adb_register(hid_key_report* report, adb_data<adb_kb_keypress> key_press) {
+    Serial.print("Mise à jour des touches HID depuis le registre ADB - Raw: ");
+    Serial.println(key_press.raw, HEX);
+
     if (key_press.raw == ADBKey::KeyCode::POWER_DOWN)
         return hid_keyboard_update_key_in_report(report, KEY_POWER, false);
     else if (key_press.raw == ADBKey::KeyCode::POWER_UP)
@@ -86,6 +103,11 @@ bool hid_keyboard_set_keys_from_adb_register(hid_key_report* report, adb_data<ad
  * @return true si le rapport a été modifié, false sinon.
  */
 bool hid_keyboard_update_key_in_report(hid_key_report* report, uint8_t hid_keycode, bool released) {
+    Serial.print("Mise à jour d'une touche HID - Code: ");
+    Serial.print(hid_keycode, HEX);
+    Serial.print(", Relâché: ");
+    Serial.println(released);
+
     if (hid_keycode == KEY_NONE) return false;
 
     if (released)
@@ -102,6 +124,9 @@ bool hid_keyboard_update_key_in_report(hid_key_report* report, uint8_t hid_keyco
  * @return true si la touche a été ajoutée, false sinon.
  */
 bool hid_keyboard_add_key_to_report(hid_key_report* report, uint8_t hid_keycode) {
+    Serial.print("Ajout d'une touche HID - Code: ");
+    Serial.println(hid_keycode, HEX);
+
     int8_t free_slot = -1;
 
     for (uint8_t i = 0; i < KEY_REPORT_KEYS_COUNT; i++) {
@@ -127,6 +152,9 @@ bool hid_keyboard_add_key_to_report(hid_key_report* report, uint8_t hid_keycode)
  * @return true si la touche a été supprimée, false sinon.
  */
 bool hid_keyboard_remove_key_from_report(hid_key_report* report, uint8_t hid_keycode) {
+    Serial.print("Suppression d'une touche HID - Code: ");
+    Serial.println(hid_keycode, HEX);
+
     bool report_changed = false;
     for (uint8_t i = 0; i < KEY_REPORT_KEYS_COUNT; i++) {
         if (report->keys[i] == hid_keycode) {
@@ -145,14 +173,33 @@ bool hid_keyboard_remove_key_from_report(hid_key_report* report, uint8_t hid_key
  * @param pressed Indique si le modificateur est pressé (true) ou relâché (false).
  * @return true si le rapport a été modifié, false sinon.
  */
-bool hid_keyboard_update_modifier_in_report(hid_key_report* report, uint8_t modifier, bool pressed) {
-    uint8_t old_modifiers = report->modifiers;
+bool hid_keyboard_update_modifier_in_report(hid_key_report* report, uint8_t adb_keycode, bool released) {
+    Serial.print("Mise à jour d'un modificateur HID - ADB Keycode: ");
+    Serial.print(adb_keycode, HEX);
+    Serial.print(", Relâché: ");
+    Serial.println(released);
 
-    if (pressed) {
-        report->modifiers |= modifier; // Active le bit correspondant au modificateur.
-    } else {
-        report->modifiers &= ~modifier; // Désactive le bit correspondant au modificateur.
-    }
+    auto update_modifier = [released, report](uint8_t mask) {
+        // Vérifie si le modificateur est déjà dans l'état souhaité
+        if (released == !(report->modifiers & mask)) return false;
 
-    return old_modifiers != report->modifiers; // Retourne true si le rapport a été modifié.
+        // Met à jour le modificateur
+        if (!released) report->modifiers |= mask; // Active le modificateur
+        else report->modifiers &= ~mask;          // Désactive le modificateur
+
+        return true;
+    };
+
+    // Correspondance des codes ADB avec les modificateurs HID
+    if (adb_keycode == ADBKey::KeyCode::LEFT_SHIFT) return update_modifier(KEY_MOD_LSHIFT);
+    if (adb_keycode == ADBKey::KeyCode::RIGHT_SHIFT) return update_modifier(KEY_MOD_RSHIFT);
+    if (adb_keycode == ADBKey::KeyCode::LEFT_CONTROL) return update_modifier(KEY_MOD_LCTRL);
+    if (adb_keycode == ADBKey::KeyCode::RIGHT_CONTROL) return update_modifier(KEY_MOD_RCTRL);
+    if (adb_keycode == ADBKey::KeyCode::LEFT_OPTION) return update_modifier(KEY_MOD_LALT);
+    if (adb_keycode == ADBKey::KeyCode::RIGHT_OPTION) return update_modifier(KEY_MOD_RALT);
+    if (adb_keycode == ADBKey::KeyCode::LEFT_COMMAND) return update_modifier(KEY_MOD_LMETA);
+    if (adb_keycode == ADBKey::KeyCode::RIGHT_COMMAND) return update_modifier(KEY_MOD_RMETA);
+
+    Serial.println("Modificateur inconnu.");
+    return false; // Aucun changement
 }

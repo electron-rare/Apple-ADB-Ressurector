@@ -17,6 +17,16 @@
 
 #define KEY_REPORT_KEYS_COUNT 6 /**< Nombre maximum de touches dans un rapport HID. */
 
+// Masques pour les modificateurs HID
+#define KEY_MOD_LCTRL  0x01
+#define KEY_MOD_LSHIFT 0x02
+#define KEY_MOD_LALT   0x04
+#define KEY_MOD_LMETA  0x08
+#define KEY_MOD_RCTRL  0x10
+#define KEY_MOD_RSHIFT 0x20
+#define KEY_MOD_RALT   0x40
+#define KEY_MOD_RMETA  0x80
+
 /**
  * @struct hid_key_report
  * @brief Structure représentant un rapport HID pour un clavier.

@@ -58,17 +58,30 @@ void setup() {
     digitalWrite(PC13, LOW);
 
     Serial.begin(115200);
+    Serial.println("Initialisation du programme...");
 
+    // Set up HID
+    hid_keyboard_init();
+    hid_mouse_init();
+    Serial.println("HID initialisé.");
+    
     adb.init(PB4, true);
+    Serial.println("Bus ADB initialisé.");
 
     delay(1000);
 
     deviceState.keyboard_present = initializeDevice(ADBKey::Address::KEYBOARD, 0x03);
+    Serial.print("Clavier détecté : ");
+    Serial.println(deviceState.keyboard_present ? "Oui" : "Non");
+
     deviceState.mouse_present = initializeDevice(ADBKey::Address::MOUSE, 0x02);
+    Serial.print("Souris détectée : ");
+    Serial.println(deviceState.mouse_present ? "Oui" : "Non");
 
     digitalWrite(PC13, HIGH);
 
     adbDevices.keyboardWriteLEDs(false, deviceState.led_caps, deviceState.led_num);
+    Serial.println("LEDs initialisées.");
 }
 
 /**
@@ -79,7 +92,10 @@ void handleKeyboard() {
     bool error = false;
 
     auto key_press = adbDevices.keyboardReadKeyPress(&error);
-    if (error) return;
+    if (error) {
+  //      Serial.println("Erreur lors de la lecture des touches du clavier.");
+        return;
+    }
 
     bool report_changed = hid_keyboard_set_keys_from_adb_register(&key_report, key_press);
 
@@ -87,6 +103,8 @@ void handleKeyboard() {
         (key_press.data.key1 == ADBKey::KeyCode::CAPS_LOCK && !key_press.data.released1)) {
         deviceState.led_caps = !deviceState.led_caps;
         adbDevices.keyboardWriteLEDs(false, deviceState.led_caps, deviceState.led_num);
+        Serial.print("Caps Lock LED : ");
+        Serial.println(deviceState.led_caps ? "Allumée" : "Éteinte");
         report_changed = true;
     }
 
@@ -94,10 +112,13 @@ void handleKeyboard() {
         (key_press.data.key1 == ADBKey::KeyCode::NUM_LOCK && !key_press.data.released1)) {
         deviceState.led_num = !deviceState.led_num;
         adbDevices.keyboardWriteLEDs(false, deviceState.led_caps, deviceState.led_num);
+        Serial.print("Num Lock LED : ");
+        Serial.println(deviceState.led_num ? "Allumée" : "Éteinte");
         report_changed = true;
     }
 
     if (report_changed) {
+        Serial.println("Rapport clavier mis à jour.");
         hid_keyboard_send_report(&key_report);
     }
 }
@@ -109,10 +130,18 @@ void handleMouse() {
     bool error = false;
 
     auto mouse_data = adbDevices.mouseReadData(&error);
-    if (error || mouse_data.raw == 0) return;
+    if (error || mouse_data.raw == 0) {
+ //       if (error) Serial.println("Erreur lors de la lecture des données de la souris.");
+        return;
+    }
 
     int8_t mouse_x = adbMouseConvertAxis(mouse_data.data.x_offset);
     int8_t mouse_y = adbMouseConvertAxis(mouse_data.data.y_offset);
+
+    Serial.print("Mouvement souris - X: ");
+    Serial.print(mouse_x);
+    Serial.print(", Y: ");
+    Serial.println(mouse_y);
 
     hid_mouse_send_report(mouse_data.data.button ? 0 : 1, mouse_x, mouse_y);
 }
@@ -122,11 +151,13 @@ void handleMouse() {
  */
 void loop() {
     if (deviceState.keyboard_present) {
+       //  Serial.println("Gestion du clavier...");
         handleKeyboard();
         delay(POLL_DELAY);
     }
 
     if (deviceState.mouse_present) {
+      //  Serial.println("Gestion de la souris...");
         handleMouse();
         delay(POLL_DELAY);
     }

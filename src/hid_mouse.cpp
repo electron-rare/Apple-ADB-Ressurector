@@ -20,7 +20,9 @@
  */
 void hid_mouse_init() {
 #ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_HID
+    Serial.println("Initialisation de la souris HID...");
     HID_Composite_Init(HID_MOUSE);
+    Serial.println("Souris HID initialisée.");
 #endif
 }
 
@@ -29,7 +31,9 @@ void hid_mouse_init() {
  */
 void hid_mouse_close() {
 #ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_HID
+    Serial.println("Fermeture de la souris HID...");
     HID_Composite_DeInit(HID_MOUSE);
+    Serial.println("Souris HID fermée.");
 #endif
 }
 
@@ -46,6 +50,13 @@ void hid_mouse_send_report(bool button, int8_t offset_x, int8_t offset_y) {
     m[1] = offset_x;
     m[2] = offset_y;
     m[3] = 0;
+
+    Serial.print("Envoi du rapport HID souris - Bouton: ");
+    Serial.print(button);
+    Serial.print(", X: ");
+    Serial.print(offset_x);
+    Serial.print(", Y: ");
+    Serial.println(offset_y);
 
 #ifdef PIO_FRAMEWORK_ARDUINO_ENABLE_HID
     HID_Composite_mouse_sendReport(m, 4);
