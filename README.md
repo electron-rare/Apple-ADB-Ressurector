@@ -118,7 +118,7 @@ Mais voilà, je ne trouvais pas exactement ce que je voulais, et comme j'avais d
 
 ---
 
-## 🛠️ Autres périphériques compatibles
+## 🛠️ Autres périphériques pas encore compatibles
 
 - **Tablettes graphiques** : Wacom ADB, Kurta ADB.  
 - **Trackballs** : Kensington Turbo Mouse, Microspeed MacTRAC.  
